@@ -11,25 +11,38 @@
 #define PageMotorSTEP 7   // 페이지 위치 제어하는 모터 STEP핀
 
 
-
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
 
-int MainMotorSpeed = 1400;
-int PageMotorSpeed = 1400;
+int MainMotorSpeed = 1400;  //메인 모터 속도값
+int PageMotorSpeed = 1400;  //페이지 모터 속도값
  
-#line 18 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 17 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void setup();
-#line 34 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 33 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void loop();
-#line 71 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 92 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void MainMotorMove(int cnt);
-#line 80 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 101 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void MainMotorTurn(char c);
-#line 90 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 111 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void PageMotorMove(int cnt);
-#line 99 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 120 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void PageMotorTurn(char c);
-#line 18 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+#line 132 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+char getCode(String data);
+#line 136 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+void PrintStart(String receivedData);
+#line 210 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+void LineNotify(int line);
+#line 217 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+void DataNotify();
+#line 223 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+void CompleteNotify();
+#line 231 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+int countNewlines(String data);
+#line 243 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
+void splitBrailleData(String data, bool dataArray[][64]);
+#line 17 "C:\\Users\\user\\Desktop\\Capstone-braille-Printer-Arduino\\Capstone-braille-Printer-Arduino.ino"
 void setup() 
 {
   Serial.begin(9600);   //시리얼모니터
@@ -48,38 +61,60 @@ void setup()
 
 void loop()
 {
-  if (blueSerial.available()) {       
-    Serial.write(blueSerial.read());  //블루투스측 내용을 시리얼모니터에 출력
-  }
-  if (Serial.available()) {     
-    String msg = Serial.readString();    
+  // 블루투스를 통해 데이터 수신 받는 경우
+  if (blueSerial.available()) {
+    String receivedData = blueSerial.readString();
+    while(blueSerial.available()){
+      receivedData += blueSerial.readString();
+    }
+    Serial.println("receivedData");
+    Serial.println(receivedData);
 
-    if(msg == "mf"){
-      Serial.println("m front");
-      MainMotorMove('f');
+    char code = getCode(receivedData);
+
+    if(code == 'I'){  // 조정값 설정
+      Serial.println("Code I");
     }
-    else if(msg == "mb"){
-      Serial.println("m back");
-      MainMotorMove('b');
+    else if(code == 'P'){ // 프린트 데이터가 들어왔을 때
+      PrintStart(receivedData);
     }
-    else if(msg == "pf"){
-      Serial.println("p front");
-      PageMotorMove('f');
-    }
-    else if(msg == "pb"){
-      Serial.println("p back");
-      PageMotorMove('b');
-    }
-    else if(msg[0] == 'm'){
-      Serial.println("m move : " + msg.substring(1));
-      MainMotorMove(msg.substring(1).toInt());
-    }
-    else if(msg[0] == 'p'){
-      Serial.println("p move : " + msg.substring(1));
-      MainMotorMove(msg.substring(1).toInt());
-    }
-    // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
+    
   }
+  // if (Serial.available()) {     
+  //   String msg = Serial.readString();    
+
+  //   if(msg == "mf"){
+  //     Serial.println("m front");
+  //     MainMotorMove('f');
+  //   }
+  //   else if(msg == "mb"){
+  //     Serial.println("m back");
+  //     MainMotorMove('b');
+  //   }
+  //   else if(msg == "pf"){
+  //     Serial.println("p front");
+  //     PageMotorMove('f');
+  //   }
+  //   else if(msg == "pb"){
+  //     Serial.println("p back");
+  //     PageMotorMove('b');
+  //   }
+  //   else if(msg[0] == 'm'){
+  //     Serial.println("m move : " + msg.substring(1));
+  //     MainMotorMove(msg.substring(1).toInt());
+  //   }
+  //   else if(msg[0] == 'p'){
+  //     Serial.println("p move : " + msg.substring(1));
+  //     MainMotorMove(msg.substring(1).toInt());
+  //   }
+  //   else if(msg == "data"){
+  //     String myData = "Hello, world!";
+  //     char myDataArray[myData.length() + 1];
+  //     myData.toCharArray(myDataArray, sizeof(myDataArray));
+  //     blueSerial.write(myDataArray);
+  //   }
+    // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
+  // }
 }
 
 // 메인 모터 제어 함수
@@ -117,5 +152,139 @@ void PageMotorTurn(char c){
   }
   else if(c == 'b'){
     digitalWrite(PageMotorDIR,HIGH);
+  }
+}
+
+/// @brief 수신받은 데이터에서 구분코드를 반환하는 함수
+/// @param data 수신받은 데이터
+/// @return 구분 코드
+char getCode(String data){
+    return data[0];
+}
+
+void PrintStart(String receivedData){
+  int first = receivedData.indexOf('|');
+  int last = receivedData.lastIndexOf('|');
+  
+  int print_id = receivedData.substring(first+1, last).toInt();
+  int total_size = receivedData.substring(last+1, receivedData.length()).toInt();
+
+  Serial.print(receivedData);
+
+  int received_size = 0;  // 전달 받은 데이터 크기
+  int total_lines = 0;
+  
+  DataNotify();
+
+  while(received_size < total_size){
+    // 데이터 수신
+    if(blueSerial.available()){
+      String brailleData = blueSerial.readString();
+      while(blueSerial.available()){
+        brailleData += blueSerial.readString();
+      }
+
+      // 받은 데이터 크기 갱신
+      received_size += brailleData.length();
+
+      // 라인 계산
+      int lines = countNewlines(brailleData);
+
+      // 점자 데이터 리스트 초기화
+      bool dataArray[lines][64];
+      for (int i = 0; i < lines; i++) {
+          for (int j = 0; j < 64; j++) {
+            dataArray[i][j] = 0;
+        }
+      }
+
+      // 점자 데이터 리스트화
+      splitBrailleData(brailleData, dataArray);
+
+      // 점자 데이터 출력
+      Serial.println("dataArray : ");
+      for (int i = 0; i < lines; i++) {
+        for (int j = 0; j < 64; j++) {
+          Serial.print(dataArray[i][j]);
+          Serial.print(" ");
+        }
+        Serial.println();
+      }
+
+      // 인쇄 용지 이동(줄간격)
+
+      // 추가 데이터 필요 notify
+      Serial.println("printing...");
+      total_lines++;
+      LineNotify(total_lines);
+      delay(400);
+      total_lines++;
+      LineNotify(total_lines);
+      delay(400);
+      total_lines++;
+      LineNotify(total_lines);
+      delay(400);
+
+      if(received_size < total_size){
+        DataNotify();
+      }
+      
+    }
+    // 인쇄 용지 이동(칸간격)
+  }
+  Serial.println("Complete Print");
+  CompleteNotify();
+
+}
+void LineNotify(int line){
+  String noti = "Line";
+  noti += line;
+  char notiArray[noti.length() + 1];
+  noti.toCharArray(notiArray, sizeof(notiArray));
+  blueSerial.write(notiArray);
+}
+void DataNotify(){
+  String noti = "Send_Data";
+  char notiArray[noti.length() + 1];
+  noti.toCharArray(notiArray, sizeof(notiArray));
+  blueSerial.write(notiArray);
+}
+void CompleteNotify(){
+  String noti = "Complete_Print";
+  char notiArray[noti.length() + 1];
+  noti.toCharArray(notiArray, sizeof(notiArray));
+  blueSerial.write(notiArray);
+}
+
+// 점자 데이터 라인 갯수 계산
+int countNewlines(String data) {
+  int count = 0;
+  for (int i = 0; i < data.length(); i++) {
+    if (data[i] == '+') {
+      count++;
+    }
+  }
+  return count+1;
+}
+
+
+// 점자 데이터 리스트화 함수
+void splitBrailleData(String data, bool dataArray[][64]) {
+  int row = 0;
+  int col = 0;
+  for (int i = 0; i < data.length(); i++) {
+    char c = data[i];
+    if (c == '+') {
+      row++;
+      col = 0;
+    } else {
+      if(c == '0'){
+        dataArray[row][col] = 0;
+      }
+      else if(c == '1'){
+        dataArray[row][col] = 1;
+      }
+      col++;
+    }
   }
 }
