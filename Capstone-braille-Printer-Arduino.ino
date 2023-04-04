@@ -12,6 +12,12 @@
 
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
 
+// 64개 점의 절대 위치 값
+int dot_point[] = {0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140, 147, 154, 161, 168, 175, 182, 189, 196, 203, 210, 217, 225, 232, 239, 246, 253, 260, 267, 274, 281, 288, 295, 302, 309, 316, 323, 330, 337, 344, 351, 358, 365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449};
+
+// 위치 값
+int current_point = 0;
+
 int MainMotorSpeed = 1400;  //메인 모터 속도값
 int PageMotorSpeed = 1400;  //페이지 모터 속도값
  
@@ -144,6 +150,39 @@ void Solenoid_OFF(){
   digitalWrite(SOLENOID, LOW);
 }
 
+// 솔레노이드 초기화 함수(스위치 닿는 위치로)
+
+// 솔레노이드 zero_point이동 함수(첫번째 위치로)
+
+// 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
+
+// 절대 위치를 통해 메인 모터 제어
+void MainMotorMoveFromZeroPoint(int p){
+
+  int move = current_point - p;
+
+  if(move < 0){ // 시계방향 회전
+    digitalWrite(MainMotorDIR,LOW);
+    for(int i = 0; i > move; i--){
+      digitalWrite(MainMotorSTEP,HIGH);
+      delayMicroseconds(MainMotorSpeed);
+      digitalWrite(MainMotorSTEP,LOW);
+      delayMicroseconds(MainMotorSpeed);
+    }
+  }
+  else if(move > 0){ // 반시계방향 회전
+    digitalWrite(MainMotorDIR,HIGH);
+    for(int i = 0; i < move; i++){
+      digitalWrite(MainMotorSTEP,HIGH);
+      delayMicroseconds(MainMotorSpeed);
+      digitalWrite(MainMotorSTEP,LOW);
+      delayMicroseconds(MainMotorSpeed);
+    }
+  }
+  
+  current_point = p;
+}
+
 /// @brief 수신받은 데이터에서 구분코드를 반환하는 함수
 /// @param data 수신받은 데이터
 /// @return 구분 코드
@@ -192,39 +231,52 @@ void PrintStart(String receivedData){
       // 점자 데이터 리스트화
       splitBrailleData(brailleData, dataArray);
 
+      // !! 솔레노이드 ON
+      Solenoid_ON();
+      delay(1000);
+      // !! 솔레노이드 제로 포인트 이동(current_point = 0 초기화)
+      // !! 페이지 모터 인쇄 시작시
+      
       // 점자 데이터 출력
+      Serial.println("printing...");
       Serial.println("dataArray : ");
       for (int i = 0; i < lines; i++) {
         for (int j = 0; j < 64; j++) {
           Serial.print(dataArray[i][j]);
           Serial.print(" ");
+          if(dataArray[i][j] == 1){ // 찍어야 하는 위치면
+            // 인덱스 위치로 이동
+            MainMotorMoveFromZeroPoint(dot_point[j]);
+            delay(300);
+            Solenoid_OFF();
+            delay(300);
+            Solenoid_ON();
+            delay(300);
+          }
         }
         Serial.println();
+        // 인쇄 정보 notify 송신
+        total_lines++;
+        LineNotify(total_lines);
+        delay(400);
+        // !! 페이지 모터 인쇄 용지 이동(줄간격)
       }
 
-      // 인쇄 용지 이동(줄간격)
+      // !! 페이지 모터 인쇄 용지 이동(칸간격)
 
       // 추가 데이터 필요 notify
-      Serial.println("printing...");
-      total_lines++;
-      LineNotify(total_lines);
-      delay(400);
-      total_lines++;
-      LineNotify(total_lines);
-      delay(400);
-      total_lines++;
-      LineNotify(total_lines);
-      delay(400);
-
       if(received_size < total_size){
         DataNotify();
       }
       
     }
-    // 인쇄 용지 이동(칸간격)
   }
+  // !! 페이지 모터 인쇄 종료 시
   Serial.println("Complete Print");
   CompleteNotify();
+  // !! 솔레노이드 초기화
+  // !! 솔레노이드 OFF
+  Solenoid_OFF();
 
 }
 void LineNotify(int line){
