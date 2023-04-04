@@ -7,6 +7,7 @@
 #define MainMotorSTEP 5   // 솔레노이드 위치 제어하는 모터 STEP핀
 #define PageMotorDIR 6    // 페이지 위치 제어하는 모터 DIR핀
 #define PageMotorSTEP 7   // 페이지 위치 제어하는 모터 STEP핀
+#define SOLENOID 8        // 솔레노이드 제어 핀
 
 
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
@@ -19,8 +20,14 @@ void setup()
   Serial.begin(9600);   //시리얼모니터
   blueSerial.begin(9600); //블루투스 시리얼
 
+  // 솔레노이드 디지털핀 Output 초기화
+  pinMode(SOLENOID,OUTPUT);
+  digitalWrite(SOLENOID, LOW);
+
+  // 메인모터 디지털핀 Output 초기화
   pinMode(MainMotorDIR,OUTPUT);
   pinMode(MainMotorSTEP,OUTPUT);
+  // 페이지모터 디지털핀 Output 초기화
   pinMode(PageMotorDIR,OUTPUT);
   pinMode(PageMotorSTEP,OUTPUT);
 
@@ -51,41 +58,43 @@ void loop()
     }
     
   }
-  // if (Serial.available()) {     
-  //   String msg = Serial.readString();    
+  if (Serial.available()) {     
+    String msg = Serial.readString();    
 
-  //   if(msg == "mf"){
-  //     Serial.println("m front");
-  //     MainMotorMove('f');
-  //   }
-  //   else if(msg == "mb"){
-  //     Serial.println("m back");
-  //     MainMotorMove('b');
-  //   }
-  //   else if(msg == "pf"){
-  //     Serial.println("p front");
-  //     PageMotorMove('f');
-  //   }
-  //   else if(msg == "pb"){
-  //     Serial.println("p back");
-  //     PageMotorMove('b');
-  //   }
-  //   else if(msg[0] == 'm'){
-  //     Serial.println("m move : " + msg.substring(1));
-  //     MainMotorMove(msg.substring(1).toInt());
-  //   }
-  //   else if(msg[0] == 'p'){
-  //     Serial.println("p move : " + msg.substring(1));
-  //     MainMotorMove(msg.substring(1).toInt());
-  //   }
-  //   else if(msg == "data"){
-  //     String myData = "Hello, world!";
-  //     char myDataArray[myData.length() + 1];
-  //     myData.toCharArray(myDataArray, sizeof(myDataArray));
-  //     blueSerial.write(myDataArray);
-  //   }
+    if(msg == "mf"){
+      Serial.println("m front");
+      MainMotorTurn('f');
+    }
+    else if(msg == "mb"){
+      Serial.println("m back");
+      MainMotorTurn('b');
+    }
+    else if(msg == "pf"){
+      Serial.println("p front");
+      PageMotorTurn('f');
+    }
+    else if(msg == "pb"){
+      Serial.println("p back");
+      PageMotorTurn('b');
+    }
+    else if(msg[0] == 'm'){
+      Serial.println("m move : " + msg.substring(1));
+      MainMotorMove(msg.substring(1).toInt());
+    }
+    else if(msg[0] == 'p'){
+      Serial.println("p move : " + msg.substring(1));
+      PageMotorMove(msg.substring(1).toInt());
+    }
+    else if(msg == "son"){
+      Serial.println("SOLENOID ON");
+      Solenoid_ON();
+    }
+    else if(msg == "soff"){
+      Serial.println("SOLENOID OFF");
+      Solenoid_OFF();
+    }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
-  // }
+  }
 }
 
 // 메인 모터 제어 함수
@@ -126,6 +135,15 @@ void PageMotorTurn(char c){
   }
 }
 
+// 솔레노이드 HIGH값
+void Solenoid_ON(){
+  digitalWrite(SOLENOID, HIGH);
+}
+// 솔레노이드 LOW값
+void Solenoid_OFF(){
+  digitalWrite(SOLENOID, LOW);
+}
+
 /// @brief 수신받은 데이터에서 구분코드를 반환하는 함수
 /// @param data 수신받은 데이터
 /// @return 구분 코드
@@ -133,6 +151,8 @@ char getCode(String data){
     return data[0];
 }
 
+/// @brief 프린트 전체 과정의 함수
+/// @param receivedData 전달받은 프린트 시작 코드 데이터(ex: P|인쇄번호|데이터크기)
 void PrintStart(String receivedData){
   int first = receivedData.indexOf('|');
   int last = receivedData.lastIndexOf('|');
