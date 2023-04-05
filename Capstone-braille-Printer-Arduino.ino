@@ -13,7 +13,15 @@
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
 
 // 64개 점의 절대 위치 값
-int dot_point[] = {0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140, 147, 154, 161, 168, 175, 182, 189, 196, 203, 210, 217, 225, 232, 239, 246, 253, 260, 267, 274, 281, 288, 295, 302, 309, 316, 323, 330, 337, 344, 351, 358, 365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449};
+int dot_point[] = {
+  0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140, 147, 154, 161, 168, 175, 182, 189, 196, 203, 210, 217, 225, 232, 239, 246, 253, 260, 267, 274, 281, 288, 295, 302, 309, 316, 323, 330, 337, 344, 351, 358, 365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449
+};
+// (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
+int PRINT_START = 100;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
+int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
+int PRINT_END_VALUE = 15; // 남은 줄 * value를 통해 용지가 빠질 때까지
+int PRINT_LINE = 20;  // 줄 간격
+int PRINT_BLOCK = 40; // 칸 간격
 
 // 위치 값
 int current_point = 0;
@@ -37,6 +45,9 @@ void setup()
   pinMode(PageMotorDIR,OUTPUT);
   pinMode(PageMotorSTEP,OUTPUT);
 
+  // 메인, 페이지 모터 LOW 설정
+  digitalWrite(MainMotorSTEP,LOW);
+  digitalWrite(PageMotorSTEP,LOW);
   // 메인, 페이지 모터 시계 방향 설정
   digitalWrite(MainMotorDIR,LOW);
   digitalWrite(PageMotorDIR,LOW);
@@ -60,6 +71,9 @@ void loop()
       Serial.println("Code I");
     }
     else if(code == 'P'){ // 프린트 데이터가 들어왔을 때
+
+      // !! 솔레노이드 제로 포인트 이동
+
       PrintStart(receivedData);
     }
     
@@ -67,31 +81,7 @@ void loop()
   if (Serial.available()) {     
     String msg = Serial.readString();    
 
-    if(msg == "mf"){
-      Serial.println("m front");
-      MainMotorTurn('f');
-    }
-    else if(msg == "mb"){
-      Serial.println("m back");
-      MainMotorTurn('b');
-    }
-    else if(msg == "pf"){
-      Serial.println("p front");
-      PageMotorTurn('f');
-    }
-    else if(msg == "pb"){
-      Serial.println("p back");
-      PageMotorTurn('b');
-    }
-    else if(msg[0] == 'm'){
-      Serial.println("m move : " + msg.substring(1));
-      MainMotorMove(msg.substring(1).toInt());
-    }
-    else if(msg[0] == 'p'){
-      Serial.println("p move : " + msg.substring(1));
-      PageMotorMove(msg.substring(1).toInt());
-    }
-    else if(msg == "son"){
+    if(msg == "son"){
       Serial.println("SOLENOID ON");
       Solenoid_ON();
     }
@@ -100,44 +90,6 @@ void loop()
       Solenoid_OFF();
     }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
-  }
-}
-
-// 메인 모터 제어 함수
-void MainMotorMove(int cnt){
-  for(int i = 0; i < cnt; i++){
-    digitalWrite(MainMotorSTEP,HIGH);
-    delayMicroseconds(MainMotorSpeed);
-    digitalWrite(MainMotorSTEP,LOW);
-    delayMicroseconds(MainMotorSpeed);
-  }
-}
-// 메인 모터 방향 제어 함수
-void MainMotorTurn(char c){
-  if(c == 'f'){
-    digitalWrite(MainMotorDIR,LOW);
-  }
-  else if(c == 'b'){
-    digitalWrite(MainMotorDIR,HIGH);
-  }
-}
-
-// 페이지 모터 제어 함수
-void PageMotorMove(int cnt){
-  for(int i = 0; i < cnt; i++){
-    digitalWrite(PageMotorSTEP,HIGH);
-    delayMicroseconds(PageMotorSpeed);
-    digitalWrite(PageMotorSTEP,LOW);
-    delayMicroseconds(PageMotorSpeed);
-  }
-}
-// 메인 모터 방향 제어 함수
-void PageMotorTurn(char c){
-  if(c == 'f'){
-    digitalWrite(PageMotorDIR,LOW);
-  }
-  else if(c == 'b'){
-    digitalWrite(PageMotorDIR,HIGH);
   }
 }
 
@@ -155,6 +107,17 @@ void Solenoid_OFF(){
 // 솔레노이드 zero_point이동 함수(첫번째 위치로)
 
 // 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
+void PageMotorMove(int cnt){
+  
+  digitalWrite(MainMotorDIR,LOW);
+
+  for(int i = 0; i < cnt; i++){
+    digitalWrite(PageMotorSTEP,HIGH);
+    delayMicroseconds(PageMotorSpeed);
+    digitalWrite(PageMotorSTEP,LOW);
+    delayMicroseconds(PageMotorSpeed);
+  }
+}
 
 // 절대 위치를 통해 메인 모터 제어
 void MainMotorMoveFromZeroPoint(int p){
@@ -178,6 +141,7 @@ void MainMotorMoveFromZeroPoint(int p){
       digitalWrite(MainMotorSTEP,LOW);
       delayMicroseconds(MainMotorSpeed);
     }
+    digitalWrite(MainMotorDIR,LOW);
   }
   
   current_point = p;
@@ -201,18 +165,28 @@ void PrintStart(String receivedData){
 
   Serial.print(receivedData);
 
+  current_point = 0;  // 현재 위치를 0으로 함
   int received_size = 0;  // 전달 받은 데이터 크기
   int total_lines = 0;
   
   DataNotify();
 
   while(received_size < total_size){
+
     // 데이터 수신
     if(blueSerial.available()){
       String brailleData = blueSerial.readString();
       while(blueSerial.available()){
         brailleData += blueSerial.readString();
       }
+
+      if(total_lines % 78 == 0){  // 새로운 페이지 인쇄 시작 시
+        // !! 페이지 모터 인쇄 용지 첫 라인으로 이동
+        Serial.println("PageMotor >> Print Start");
+        PageMotorMove(PRINT_START);
+        delay(100);
+      }
+
 
       // 받은 데이터 크기 갱신
       received_size += brailleData.length();
@@ -232,10 +206,9 @@ void PrintStart(String receivedData){
       splitBrailleData(brailleData, dataArray);
 
       // !! 솔레노이드 ON
-      Solenoid_ON();
-      delay(1000);
-      // !! 솔레노이드 제로 포인트 이동(current_point = 0 초기화)
-      // !! 페이지 모터 인쇄 시작시
+      // Solenoid_ON();
+      // delay(1000);
+
       
       // 점자 데이터 출력
       Serial.println("printing...");
@@ -248,10 +221,10 @@ void PrintStart(String receivedData){
             // 인덱스 위치로 이동
             MainMotorMoveFromZeroPoint(dot_point[j]);
             delay(300);
-            Solenoid_OFF();
-            delay(300);
             Solenoid_ON();
-            delay(300);
+            delay(50);
+            Solenoid_OFF();
+            delay(50);
           }
         }
         Serial.println();
@@ -260,23 +233,46 @@ void PrintStart(String receivedData){
         LineNotify(total_lines);
         delay(400);
         // !! 페이지 모터 인쇄 용지 이동(줄간격)
+        if(i != lines - 1){ // 마지막 라인일 경우에는 이동 하지 않음
+          Serial.println("PageMotor >> Print Line");
+          PageMotorMove(PRINT_LINE);
+          delay(100);
+        }
+        
       }
-
       // !! 페이지 모터 인쇄 용지 이동(칸간격)
+      Serial.println("PageMotor >> Print Block");
+      PageMotorMove(PRINT_BLOCK);
+      delay(100);
 
       // 추가 데이터 필요 notify
       if(received_size < total_size){
         DataNotify();
       }
       
+      if(total_lines % 78 == 0){  // 한페이지 인쇄 완료 시
+        // !! 페이지 모터 인쇄 용지 제거
+        Serial.println("PageMotor >> Print End : " + String(PRINT_END));
+        PageMotorMove(PRINT_END);
+        delay(100);
+      }
+
     }
   }
-  // !! 페이지 모터 인쇄 종료 시
+  
   Serial.println("Complete Print");
   CompleteNotify();
+  // !! 0으로 이동
+  MainMotorMoveFromZeroPoint(0);
+  delay(300);
   // !! 솔레노이드 초기화
   // !! 솔레노이드 OFF
   Solenoid_OFF();
+  // !! 페이지 모터 인쇄 종료 시
+  if(total_lines % 78 != 0){
+    Serial.println("PageMotor >> Print End : " + String(PRINT_END_VALUE * (total_lines % 78)));
+    PageMotorMove(PRINT_END_VALUE * (total_lines % 78));
+  }
 
 }
 void LineNotify(int line){
