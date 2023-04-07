@@ -8,6 +8,7 @@
 #define PageMotorDIR 6    // 페이지 위치 제어하는 모터 DIR핀
 #define PageMotorSTEP 7   // 페이지 위치 제어하는 모터 STEP핀
 #define SOLENOID 8        // 솔레노이드 제어 핀
+#define INIT_SWITCH 9     // 엔드스탑 스위치
 
 
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
@@ -16,6 +17,10 @@ SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체�
 int dot_point[] = {
   0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140, 147, 154, 161, 168, 175, 182, 189, 196, 203, 210, 217, 225, 232, 239, 246, 253, 260, 267, 274, 281, 288, 295, 302, 309, 316, 323, 330, 337, 344, 351, 358, 365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449
 };
+
+// 초기화 위치에서 첫번째 위치까지 모터 이동 상수
+int toZeroPorint = 30;
+
 // (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 int PRINT_START = 100;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
 int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
@@ -49,8 +54,13 @@ void setup()
   digitalWrite(MainMotorSTEP,LOW);
   digitalWrite(PageMotorSTEP,LOW);
   // 메인, 페이지 모터 시계 방향 설정
+  // 정면에서 봤을 때 LOW가 반시계, HIGH가 시계
   digitalWrite(MainMotorDIR,LOW);
   digitalWrite(PageMotorDIR,LOW);
+
+  // 엔드스탑 스위치 설정
+  pinMode(INIT_SWITCH, INPUT);
+
 
 }
 
@@ -89,8 +99,27 @@ void loop()
       Serial.println("SOLENOID OFF");
       Solenoid_OFF();
     }
+    else if(msg == "switch"){
+      Serial.println(getSwitch());
+    }
+    else if(msg == "init"){
+      InitMainMotor();
+    }
+    else if(msg == "zero"){
+      GoToZeroPoint();
+    }
+    else if(msg[0] == 'I'){
+      int p = msg.substring(2).toInt();
+      TestZeroPoint(p);
+    }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
   }
+}
+
+// 스위치 상태 확인
+// 1 : OFF, 0 : ON
+int getSwitch(){
+  return digitalRead(INIT_SWITCH);
 }
 
 // 솔레노이드 HIGH값
@@ -109,7 +138,8 @@ void Solenoid_OFF(){
 // 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 void PageMotorMove(int cnt){
   
-  digitalWrite(MainMotorDIR,LOW);
+  // 시계방향 회전
+  digitalWrite(PageMotorDIR,HIGH); 
 
   for(int i = 0; i < cnt; i++){
     digitalWrite(PageMotorSTEP,HIGH);
@@ -117,6 +147,86 @@ void PageMotorMove(int cnt){
     digitalWrite(PageMotorSTEP,LOW);
     delayMicroseconds(PageMotorSpeed);
   }
+
+  digitalWrite(PageMotorDIR,LOW); 
+
+}
+
+void TestZeroPoint(int p){
+  // 입력받은 값으로 toZeroPoint 값 변경
+  toZeroPorint = p;
+
+  InitMainMotor();
+  delay(500);
+
+  // 시계방향 회전
+  digitalWrite(MainMotorDIR,HIGH); 
+  for(int i = 0; i < toZeroPorint; i++){
+    digitalWrite(MainMotorSTEP,HIGH);
+    delayMicroseconds(PageMotorSpeed);
+    digitalWrite(MainMotorSTEP,LOW);
+    delayMicroseconds(PageMotorSpeed);
+  }
+  digitalWrite(MainMotorDIR,LOW);
+
+  delay(500);
+  Solenoid_ON();
+  delay(2000);
+  Solenoid_OFF();
+  delay(500);
+
+  InitMainMotor();
+}
+
+// 첫번째 위치로 메인모터 이동
+void GoToZeroPoint(){
+
+  InitMainMotor();
+  delay(500);
+
+  // 시계방향 회전
+  digitalWrite(MainMotorDIR,HIGH); 
+  for(int i = 0; i < toZeroPorint; i++){
+    digitalWrite(MainMotorSTEP,HIGH);
+    delayMicroseconds(PageMotorSpeed);
+    digitalWrite(MainMotorSTEP,LOW);
+    delayMicroseconds(PageMotorSpeed);
+  }
+  digitalWrite(MainMotorDIR,LOW);
+
+}
+
+// 메인 모터 초기화 함수
+void InitMainMotor(){
+
+  if( 0 == getSwitch() ){
+      // 시계방향 회전
+    digitalWrite(MainMotorDIR,HIGH); 
+    for(int i = 0; i < 100; i++){
+      digitalWrite(MainMotorSTEP,HIGH);
+      delayMicroseconds(PageMotorSpeed);
+      digitalWrite(MainMotorSTEP,LOW);
+      delayMicroseconds(PageMotorSpeed);
+    }
+    digitalWrite(MainMotorDIR,LOW);
+    delay(500);
+    while( 1 == getSwitch() ){
+      digitalWrite(MainMotorSTEP,HIGH);
+      delayMicroseconds(PageMotorSpeed);
+      digitalWrite(MainMotorSTEP,LOW);
+      delayMicroseconds(PageMotorSpeed);
+    }
+  }
+  else{
+    digitalWrite(MainMotorDIR,LOW);
+    while( 1 == getSwitch() ){
+      digitalWrite(MainMotorSTEP,HIGH);
+      delayMicroseconds(PageMotorSpeed);
+      digitalWrite(MainMotorSTEP,LOW);
+      delayMicroseconds(PageMotorSpeed);
+    }
+  }
+  
 }
 
 // 절대 위치를 통해 메인 모터 제어
@@ -124,24 +234,25 @@ void MainMotorMoveFromZeroPoint(int p){
 
   int move = current_point - p;
 
-  if(move < 0){ // 시계방향 회전
-    digitalWrite(MainMotorDIR,LOW);
+  if(move < 0){ // 시계방향 회전 ( 왼 -> 오 )
+    digitalWrite(MainMotorDIR,HIGH);
     for(int i = 0; i > move; i--){
       digitalWrite(MainMotorSTEP,HIGH);
       delayMicroseconds(MainMotorSpeed);
       digitalWrite(MainMotorSTEP,LOW);
       delayMicroseconds(MainMotorSpeed);
     }
+    digitalWrite(MainMotorDIR,LOW);
   }
-  else if(move > 0){ // 반시계방향 회전
-    digitalWrite(MainMotorDIR,HIGH);
+  else if(move > 0){ // 반시계방향 회전 ( 오 -> 왼 )
+    digitalWrite(MainMotorDIR,LOW);
     for(int i = 0; i < move; i++){
       digitalWrite(MainMotorSTEP,HIGH);
       delayMicroseconds(MainMotorSpeed);
       digitalWrite(MainMotorSTEP,LOW);
       delayMicroseconds(MainMotorSpeed);
     }
-    digitalWrite(MainMotorDIR,LOW);
+    
   }
   
   current_point = p;
