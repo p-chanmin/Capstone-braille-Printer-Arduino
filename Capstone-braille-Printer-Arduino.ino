@@ -79,6 +79,13 @@ void loop()
 
     if(code == 'I'){  // 조정값 설정
       Serial.println("Code I");
+      int p = receivedData.substring(2).toInt();
+      Serial.println("Test Zero Point :" + String(p));
+      TestZeroPoint(p);
+    }
+    else if(code == 'Z'){
+      Serial.println("Code Z");
+      ZeroNotify();
     }
     else if(code == 'P'){ // 프린트 데이터가 들어왔을 때
 
@@ -103,14 +110,20 @@ void loop()
       Serial.println(getSwitch());
     }
     else if(msg == "init"){
+      Serial.println("Init Main Motor");
       InitMainMotor();
     }
     else if(msg == "zero"){
+      Serial.println("Go Zero Point");
       GoToZeroPoint();
     }
     else if(msg[0] == 'I'){
       int p = msg.substring(2).toInt();
+      Serial.println("Test Zero Point :" + String(p));
       TestZeroPoint(p);
+    }
+    else if(msg == "Z"){
+      ZeroNotify();
     }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
   }
@@ -131,9 +144,7 @@ void Solenoid_OFF(){
   digitalWrite(SOLENOID, LOW);
 }
 
-// 솔레노이드 초기화 함수(스위치 닿는 위치로)
 
-// 솔레노이드 zero_point이동 함수(첫번째 위치로)
 
 // 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 void PageMotorMove(int cnt){
@@ -153,8 +164,11 @@ void PageMotorMove(int cnt){
 }
 
 void TestZeroPoint(int p){
+
   // 입력받은 값으로 toZeroPoint 값 변경
   toZeroPorint = p;
+
+  ZeroNotify();
 
   InitMainMotor();
   delay(500);
@@ -176,10 +190,14 @@ void TestZeroPoint(int p){
   delay(500);
 
   InitMainMotor();
+
+  TestEndNotify();
 }
 
-// 첫번째 위치로 메인모터 이동
+// 솔레노이드 zero_point이동 함수(첫번째 위치로)
 void GoToZeroPoint(){
+
+  Serial.println("Go To Zero Point");
 
   InitMainMotor();
   delay(500);
@@ -196,8 +214,10 @@ void GoToZeroPoint(){
 
 }
 
-// 메인 모터 초기화 함수
+// 솔레노이드 초기화 함수(스위치 닿는 위치로)
 void InitMainMotor(){
+
+  Serial.println("Init Main Motor");
 
   if( 0 == getSwitch() ){
       // 시계방향 회전
@@ -276,6 +296,9 @@ void PrintStart(String receivedData){
 
   Serial.print(receivedData);
 
+  // 솔레노이드 설정한 zero_point 이동 ( 초기화 포함 )
+  GoToZeroPoint();
+
   current_point = 0;  // 현재 위치를 0으로 함
   int received_size = 0;  // 전달 받은 데이터 크기
   int total_lines = 0;
@@ -292,7 +315,7 @@ void PrintStart(String receivedData){
       }
 
       if(total_lines % 78 == 0){  // 새로운 페이지 인쇄 시작 시
-        // !! 페이지 모터 인쇄 용지 첫 라인으로 이동
+        // 페이지 모터 인쇄 용지 첫 라인으로 이동
         Serial.println("PageMotor >> Print Start");
         PageMotorMove(PRINT_START);
         delay(100);
@@ -315,10 +338,6 @@ void PrintStart(String receivedData){
 
       // 점자 데이터 리스트화
       splitBrailleData(brailleData, dataArray);
-
-      // !! 솔레노이드 ON
-      // Solenoid_ON();
-      // delay(1000);
 
       
       // 점자 데이터 출력
@@ -343,7 +362,7 @@ void PrintStart(String receivedData){
         total_lines++;
         LineNotify(total_lines);
         delay(400);
-        // !! 페이지 모터 인쇄 용지 이동(줄간격)
+        // 페이지 모터 인쇄 용지 이동(줄간격)
         if(i != lines - 1){ // 마지막 라인일 경우에는 이동 하지 않음
           Serial.println("PageMotor >> Print Line");
           PageMotorMove(PRINT_LINE);
@@ -351,7 +370,7 @@ void PrintStart(String receivedData){
         }
         
       }
-      // !! 페이지 모터 인쇄 용지 이동(칸간격)
+      // 페이지 모터 인쇄 용지 이동(칸간격)
       Serial.println("PageMotor >> Print Block");
       PageMotorMove(PRINT_BLOCK);
       delay(100);
@@ -362,7 +381,7 @@ void PrintStart(String receivedData){
       }
       
       if(total_lines % 78 == 0){  // 한페이지 인쇄 완료 시
-        // !! 페이지 모터 인쇄 용지 제거
+        // 페이지 모터 인쇄 용지 제거
         Serial.println("PageMotor >> Print End : " + String(PRINT_END));
         PageMotorMove(PRINT_END);
         delay(100);
@@ -373,13 +392,14 @@ void PrintStart(String receivedData){
   
   Serial.println("Complete Print");
   CompleteNotify();
-  // !! 0으로 이동
+  // 0으로 이동
   MainMotorMoveFromZeroPoint(0);
   delay(300);
-  // !! 솔레노이드 초기화
-  // !! 솔레노이드 OFF
+  // 솔레노이드 초기화
+  InitMainMotor();
+  // 솔레노이드 OFF
   Solenoid_OFF();
-  // !! 페이지 모터 인쇄 종료 시
+  // 페이지 모터 인쇄 종료 시
   if(total_lines % 78 != 0){
     Serial.println("PageMotor >> Print End : " + String(PRINT_END_VALUE * (total_lines % 78)));
     PageMotorMove(PRINT_END_VALUE * (total_lines % 78));
@@ -401,6 +421,19 @@ void DataNotify(){
 }
 void CompleteNotify(){
   String noti = "Complete_Print";
+  char notiArray[noti.length() + 1];
+  noti.toCharArray(notiArray, sizeof(notiArray));
+  blueSerial.write(notiArray);
+}
+void ZeroNotify(){
+  String noti = "Init";
+  noti += toZeroPorint;
+  char notiArray[noti.length() + 1];
+  noti.toCharArray(notiArray, sizeof(notiArray));
+  blueSerial.write(notiArray);
+}
+void TestEndNotify(){
+  String noti = "TestEnd";
   char notiArray[noti.length() + 1];
   noti.toCharArray(notiArray, sizeof(notiArray));
   blueSerial.write(notiArray);
