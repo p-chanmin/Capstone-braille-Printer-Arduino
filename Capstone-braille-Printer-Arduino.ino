@@ -1,5 +1,6 @@
 
 #include <SoftwareSerial.h> //시리얼통신 라이브러리 호출
+#include <AccelStepper.h> 
 
 #define BlueRX 2          // 블루투스 Rx핀
 #define BlueTX 3          // 블루투스 Tx핀
@@ -9,32 +10,40 @@
 #define PageMotorSTEP 7   // 페이지 위치 제어하는 모터 STEP핀
 #define SOLENOID 8        // 솔레노이드 제어 핀
 #define INIT_SWITCH 9     // 엔드스탑 스위치
+#define MainMotorEN 10    // 메인 모터 Enable핀
+#define PageMotorEN 11    // 페이지 모터 Enable핀
+#define MS2_PIN 12        // 메인모터 마이크로 스테핑 MS2핀
 
 
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
 
 // 64개 점의 절대 위치 값
 int dot_point[] = {
-  0, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70, 77, 84, 91, 98, 105, 112, 119, 126, 133, 140, 147, 154, 161, 168, 175, 182, 189, 196, 203, 210, 217, 225, 232, 239, 246, 253, 260, 267, 274, 281, 288, 295, 302, 309, 316, 323, 330, 337, 344, 351, 358, 365, 372, 379, 386, 393, 400, 407, 414, 421, 428, 435, 442, 449
+  0, 53, 110, 163, 220, 273, 330, 383, 440, 493, 550, 603, 660, 713, 770, 823, 880, 933, 990, 1043, 1100, 1153, 1210, 1263, 1320, 1373, 1430, 1483, 1540, 1593, 1650, 1703, 1760, 1813, 1870, 1923, 1980, 2033, 2090, 2143, 2200, 2253, 2310, 2363, 2420, 2473, 2530, 2583, 2640, 2693, 2750, 2803, 2860, 2913, 2970, 3023, 3080, 3133, 3190, 3243, 3300, 3353, 3410, 3463
 };
 
+
 // 초기화 위치에서 첫번째 위치까지 모터 이동 상수
-int toZeroPorint = 30;
+int toZeroPorint = 240;
 
 // (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
-int PRINT_START = 100;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
+int PRINT_START = 150;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
 int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
 int PRINT_END_VALUE = 15; // 남은 줄 * value를 통해 용지가 빠질 때까지
-int PRINT_LINE = 20;  // 줄 간격
-int PRINT_BLOCK = 40; // 칸 간격
+int PRINT_LINE = 5;  // 줄 간격
+int PRINT_BLOCK = 10; // 칸 간격
 
 // 위치 값
 int current_point = 0;
 
-int MainMotorSpeed = 1400;  //메인 모터 속도값
-int PageMotorSpeed = 1400;  //페이지 모터 속도값
+int MainMotorSpeed = 800;  //메인 모터 속도값
+int PageMotorSpeed = 1600;  //페이지 모터 속도값
+
+// 메인모터 객체 생성
+AccelStepper stepper(AccelStepper::DRIVER, MainMotorSTEP, MainMotorDIR);
  
 void setup() 
+
 {
   Serial.begin(9600);   //시리얼모니터
   blueSerial.begin(9600); //블루투스 시리얼
@@ -58,9 +67,25 @@ void setup()
   digitalWrite(MainMotorDIR,LOW);
   digitalWrite(PageMotorDIR,LOW);
 
+  // 메인 모터, 페이지 모터 Enable 설정
+  pinMode(MainMotorEN,OUTPUT);
+  pinMode(PageMotorEN,OUTPUT);
+  // 메인 모터, 페이지 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
+  digitalWrite(PageMotorEN,HIGH);
+  // MS2 PIN 설정
+  pinMode(MS2_PIN,OUTPUT);
+  digitalWrite(MS2_PIN,HIGH);
+
   // 엔드스탑 스위치 설정
   pinMode(INIT_SWITCH, INPUT);
 
+  // 모터 속도 및 가속도 설정
+  stepper.setMaxSpeed(1000);
+  stepper.setAcceleration(2500);
+
+  // 초기 위치 설정
+  stepper.setCurrentPosition(0);
 
 }
 
@@ -122,8 +147,22 @@ void loop()
       Serial.println("Test Zero Point :" + String(p));
       TestZeroPoint(p);
     }
+    else if(msg == "test"){
+      for(int i = 0; i < 64 ; i++){
+        MainMotorMoveFromZeroPoint(dot_point[i]);
+        delay(300);
+        digitalWrite(SOLENOID, HIGH);
+        delay(50);
+        digitalWrite(SOLENOID, LOW);
+        delay(50);
+      }
+    }
     else if(msg == "Z"){
       ZeroNotify();
+    }
+    else{
+      Serial.println("Page Motor Move :" + String(msg.toInt()));
+      PageMotorMove(msg.toInt());
     }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
   }
@@ -148,7 +187,9 @@ void Solenoid_OFF(){
 
 // 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 void PageMotorMove(int cnt){
-  
+  // 패이지 모터 활성화
+  digitalWrite(PageMotorEN,LOW);
+
   // 시계방향 회전
   digitalWrite(PageMotorDIR,HIGH); 
 
@@ -160,11 +201,14 @@ void PageMotorMove(int cnt){
   }
 
   digitalWrite(PageMotorDIR,LOW); 
+  
+  // 페이지 모터 비활성화
+  digitalWrite(PageMotorEN,HIGH);
 
 }
 
 void TestZeroPoint(int p){
-
+  
   // 입력받은 값으로 toZeroPoint 값 변경
   toZeroPorint = p;
 
@@ -173,19 +217,20 @@ void TestZeroPoint(int p){
   InitMainMotor();
   delay(500);
 
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
+
   // 시계방향 회전
-  digitalWrite(MainMotorDIR,HIGH); 
-  for(int i = 0; i < toZeroPorint; i++){
-    digitalWrite(MainMotorSTEP,HIGH);
-    delayMicroseconds(PageMotorSpeed);
-    digitalWrite(MainMotorSTEP,LOW);
-    delayMicroseconds(PageMotorSpeed);
-  }
-  digitalWrite(MainMotorDIR,LOW);
+  stepper.moveTo(toZeroPorint);
+  stepper.runToPosition();
+  delay(500);
+
+  // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
 
   delay(500);
   Solenoid_ON();
-  delay(2000);
+  delay(1000);
   Solenoid_OFF();
   delay(500);
 
@@ -202,15 +247,17 @@ void GoToZeroPoint(){
   InitMainMotor();
   delay(500);
 
-  // 시계방향 회전
-  digitalWrite(MainMotorDIR,HIGH); 
-  for(int i = 0; i < toZeroPorint; i++){
-    digitalWrite(MainMotorSTEP,HIGH);
-    delayMicroseconds(PageMotorSpeed);
-    digitalWrite(MainMotorSTEP,LOW);
-    delayMicroseconds(PageMotorSpeed);
-  }
-  digitalWrite(MainMotorDIR,LOW);
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
+
+  stepper.moveTo(toZeroPorint);
+  stepper.runToPosition();
+  delay(500);
+
+  stepper.setCurrentPosition(0);
+
+  // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
 
 }
 
@@ -219,61 +266,45 @@ void InitMainMotor(){
 
   Serial.println("Init Main Motor");
 
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
+
   if( 0 == getSwitch() ){
-      // 시계방향 회전
-    digitalWrite(MainMotorDIR,HIGH); 
-    for(int i = 0; i < 100; i++){
-      digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(PageMotorSpeed);
-      digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(PageMotorSpeed);
-    }
-    digitalWrite(MainMotorDIR,LOW);
+    stepper.setCurrentPosition(0);
+    stepper.moveTo(80);
+    stepper.runToPosition();
     delay(500);
     while( 1 == getSwitch() ){
-      digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(PageMotorSpeed);
-      digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(PageMotorSpeed);
+      stepper.setSpeed(-500);
+      stepper.runSpeed();
     }
   }
   else{
-    digitalWrite(MainMotorDIR,LOW);
     while( 1 == getSwitch() ){
-      digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(PageMotorSpeed);
-      digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(PageMotorSpeed);
+      stepper.setSpeed(-500);
+      stepper.runSpeed();
     }
   }
+  stepper.stop();
+
+  stepper.setCurrentPosition(0);
+
+  // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
   
 }
 
 // 절대 위치를 통해 메인 모터 제어
 void MainMotorMoveFromZeroPoint(int p){
 
-  int move = current_point - p;
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
 
-  if(move < 0){ // 시계방향 회전 ( 왼 -> 오 )
-    digitalWrite(MainMotorDIR,HIGH);
-    for(int i = 0; i > move; i--){
-      digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(MainMotorSpeed);
-      digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(MainMotorSpeed);
-    }
-    digitalWrite(MainMotorDIR,LOW);
-  }
-  else if(move > 0){ // 반시계방향 회전 ( 오 -> 왼 )
-    digitalWrite(MainMotorDIR,LOW);
-    for(int i = 0; i < move; i++){
-      digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(MainMotorSpeed);
-      digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(MainMotorSpeed);
-    }
-    
-  }
+  stepper.moveTo(p);
+  stepper.runToPosition();
+
+  // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
   
   current_point = p;
 }
@@ -300,6 +331,7 @@ void PrintStart(String receivedData){
   GoToZeroPoint();
 
   current_point = 0;  // 현재 위치를 0으로 함
+  stepper.setCurrentPosition(0);
   int received_size = 0;  // 전달 받은 데이터 크기
   int total_lines = 0;
   
