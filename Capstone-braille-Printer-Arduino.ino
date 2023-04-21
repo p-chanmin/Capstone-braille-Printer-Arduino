@@ -139,6 +139,16 @@ void loop()
     else if(msg == "Z"){
       ZeroNotify();
     }
+    else if(msg == "test"){
+      for(int i = 0; i < 64 ; i++){
+        MainMotorMoveFromZeroPoint(dot_point[i]);
+        delay(300);
+        digitalWrite(SOLENOID, HIGH);
+        delay(50);
+        digitalWrite(SOLENOID, LOW);
+        delay(50);
+      }
+    }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
   }
 }
