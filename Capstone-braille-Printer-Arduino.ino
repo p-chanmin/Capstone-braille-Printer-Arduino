@@ -18,23 +18,23 @@ SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체�
 
 // 64개 점의 절대 위치 값
 int dot_point[] = {
-  0, 53, 110, 163, 220, 273, 330, 383, 440, 493, 550, 603, 660, 713, 770, 823, 880, 933, 990, 1043, 1100, 1153, 1210, 1263, 1320, 1373, 1430, 1483, 1540, 1593, 1650, 1703, 1760, 1813, 1870, 1923, 1980, 2033, 2090, 2143, 2200, 2253, 2310, 2363, 2420, 2473, 2530, 2583, 2640, 2693, 2750, 2803, 2860, 2913, 2970, 3023, 3080, 3133, 3190, 3243, 3300, 3353, 3410, 3463
-};
+  0, 53, 110, 158, 215, 263, 330, 378, 435, 488, 545, 598, 655, 703, 765, 813, 870, 923, 980, 1033, 1095, 1148, 1205, 1258, 1315, 1368, 1425, 1478, 1535, 1583, 1645, 1690, 1747, 1800, 1857, 1908, 1965, 2018, 2075, 2128, 2185, 2238, 2295, 2348, 2405, 2458, 2515, 2568, 2628, 2678, 2735, 2788, 2845, 2898, 2955, 3008, 3065, 3118, 3175, 3228, 3285, 3333, 3390, 3443
+  };
 
 // 초기화 위치에서 첫번째 위치까지 모터 이동 상수
-int toZeroPorint = 240;
+int toZeroPorint = 235;
 
 // (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
-int PRINT_START = 150;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
+int PRINT_START = 80;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
 int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
-int PRINT_END_VALUE = 15; // 남은 줄 * value를 통해 용지가 빠질 때까지
+int PRINT_END_VALUE = 10; // 남은 줄 * value를 통해 용지가 빠질 때까지
 int PRINT_LINE = 5;  // 줄 간격
 int PRINT_BLOCK = 10; // 칸 간격
 
 // 위치 값
 int current_point = 0;
 
-int MainMotorSpeed = 1600;  //메인 모터 속도값
+int MainMotorSpeed = 800;  //메인 모터 속도값
 int PageMotorSpeed = 1600;  //페이지 모터 속도값
  
 void setup() 
@@ -140,7 +140,7 @@ void loop()
       ZeroNotify();
     }
     else if(msg == "test"){
-      for(int i = 0; i < 64 ; i++){
+      for(int i = 0; i < 64; i++){
         MainMotorMoveFromZeroPoint(dot_point[i]);
         delay(300);
         digitalWrite(SOLENOID, HIGH);
@@ -214,9 +214,9 @@ void TestZeroPoint(int p){
   digitalWrite(MainMotorDIR,HIGH); 
   for(int i = 0; i < toZeroPorint; i++){
     digitalWrite(MainMotorSTEP,HIGH);
-    delayMicroseconds(PageMotorSpeed);
+    delayMicroseconds(MainMotorSpeed);
     digitalWrite(MainMotorSTEP,LOW);
-    delayMicroseconds(PageMotorSpeed);
+    delayMicroseconds(MainMotorSpeed);
   }
   digitalWrite(MainMotorDIR,LOW);
 
@@ -249,9 +249,9 @@ void GoToZeroPoint(){
   digitalWrite(MainMotorDIR,HIGH); 
   for(int i = 0; i < toZeroPorint; i++){
     digitalWrite(MainMotorSTEP,HIGH);
-    delayMicroseconds(PageMotorSpeed);
+    delayMicroseconds(MainMotorSpeed);
     digitalWrite(MainMotorSTEP,LOW);
-    delayMicroseconds(PageMotorSpeed);
+    delayMicroseconds(MainMotorSpeed);
   }
   digitalWrite(MainMotorDIR,LOW);
 
@@ -273,26 +273,26 @@ void InitMainMotor(){
     digitalWrite(MainMotorDIR,HIGH); 
     for(int i = 0; i < 100; i++){
       digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(PageMotorSpeed);
+      delayMicroseconds(MainMotorSpeed);
       digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(PageMotorSpeed);
+      delayMicroseconds(MainMotorSpeed);
     }
     digitalWrite(MainMotorDIR,LOW);
     delay(500);
     while( 1 == getSwitch() ){
       digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(PageMotorSpeed);
+      delayMicroseconds(MainMotorSpeed);
       digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(PageMotorSpeed);
+      delayMicroseconds(MainMotorSpeed);
     }
   }
   else{
     digitalWrite(MainMotorDIR,LOW);
     while( 1 == getSwitch() ){
       digitalWrite(MainMotorSTEP,HIGH);
-      delayMicroseconds(PageMotorSpeed);
+      delayMicroseconds(MainMotorSpeed);
       digitalWrite(MainMotorSTEP,LOW);
-      delayMicroseconds(PageMotorSpeed);
+      delayMicroseconds(MainMotorSpeed);
     }
   }
 
@@ -458,8 +458,8 @@ void PrintStart(String receivedData){
   Solenoid_OFF();
   // 페이지 모터 인쇄 종료 시
   if(total_lines % 78 != 0){
-    Serial.println("PageMotor >> Print End : " + String(PRINT_END_VALUE * (total_lines % 78)));
-    PageMotorMove(PRINT_END_VALUE * (total_lines % 78));
+    Serial.println("PageMotor >> Print End : " + String(PRINT_END_VALUE * ((78 - total_lines) % 78)));
+    PageMotorMove(PRINT_END_VALUE * ((78 - total_lines) % 78));
   }
 
 }
