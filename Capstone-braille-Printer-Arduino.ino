@@ -25,17 +25,17 @@ int dot_point[] = {
 int toZeroPorint = 30;
 
 // (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
-int PRINT_START = 100;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
+int PRINT_START = 150;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
 int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
 int PRINT_END_VALUE = 15; // 남은 줄 * value를 통해 용지가 빠질 때까지
-int PRINT_LINE = 20;  // 줄 간격
-int PRINT_BLOCK = 40; // 칸 간격
+int PRINT_LINE = 5;  // 줄 간격
+int PRINT_BLOCK = 10; // 칸 간격
 
 // 위치 값
 int current_point = 0;
 
-int MainMotorSpeed = 1400;  //메인 모터 속도값
-int PageMotorSpeed = 1400;  //페이지 모터 속도값
+int MainMotorSpeed = 1600;  //메인 모터 속도값
+int PageMotorSpeed = 1600;  //페이지 모터 속도값
  
 void setup() 
 {
