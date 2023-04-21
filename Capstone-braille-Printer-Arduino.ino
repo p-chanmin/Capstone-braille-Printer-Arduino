@@ -22,7 +22,7 @@ int dot_point[] = {
 };
 
 // 초기화 위치에서 첫번째 위치까지 모터 이동 상수
-int toZeroPorint = 30;
+int toZeroPorint = 240;
 
 // (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 int PRINT_START = 150;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
