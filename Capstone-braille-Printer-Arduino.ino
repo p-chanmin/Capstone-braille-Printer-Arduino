@@ -36,11 +36,11 @@ int PRINT_BLOCK = 10; // 칸 간격
 // 위치 값
 int current_point = 0;
 
-int MainMotorSpeed = 800;  //메인 모터 속도값
+int MainMotorSpeed = 1600;  //메인 모터 속도값
 int PageMotorSpeed = 1600;  //페이지 모터 속도값
 
-// 메인모터 객체 생성
-AccelStepper stepper(AccelStepper::DRIVER, MainMotorSTEP, MainMotorDIR);
+// // 메인모터 객체 생성
+// AccelStepper stepper(AccelStepper::DRIVER, MainMotorSTEP, MainMotorDIR);
  
 void setup() 
 
@@ -80,12 +80,12 @@ void setup()
   // 엔드스탑 스위치 설정
   pinMode(INIT_SWITCH, INPUT);
 
-  // 모터 속도 및 가속도 설정
-  stepper.setMaxSpeed(1000);
-  stepper.setAcceleration(2500);
+  // // 모터 속도 및 가속도 설정
+  // stepper.setMaxSpeed(1000);
+  // stepper.setAcceleration(2500);
 
-  // 초기 위치 설정
-  stepper.setCurrentPosition(0);
+  // // 초기 위치 설정
+  // stepper.setCurrentPosition(0);
 
 }
 
