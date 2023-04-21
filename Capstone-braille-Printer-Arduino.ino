@@ -9,6 +9,9 @@
 #define PageMotorSTEP 7   // 페이지 위치 제어하는 모터 STEP핀
 #define SOLENOID 8        // 솔레노이드 제어 핀
 #define INIT_SWITCH 9     // 엔드스탑 스위치
+#define MainMotorEN 10    // 메인 모터 Enable핀
+#define PageMotorEN 11    // 페이지 모터 Enable핀
+#define MS2_PIN 12        // 메인모터 마이크로 스테핑 MS2핀
 
 
 SoftwareSerial blueSerial(BlueTX, BlueRX);  //시리얼 통신을 위한 객체선언
@@ -57,6 +60,17 @@ void setup()
   // 정면에서 봤을 때 LOW가 반시계, HIGH가 시계
   digitalWrite(MainMotorDIR,LOW);
   digitalWrite(PageMotorDIR,LOW);
+
+  // 메인 모터, 페이지 모터 Enable 설정
+  pinMode(MainMotorEN,OUTPUT);
+  pinMode(PageMotorEN,OUTPUT);
+  // 메인 모터, 페이지 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
+  digitalWrite(PageMotorEN,HIGH);
+  // MS2 PIN 설정
+  pinMode(MS2_PIN,OUTPUT);
+  digitalWrite(MS2_PIN,HIGH);
+
 
   // 엔드스탑 스위치 설정
   pinMode(INIT_SWITCH, INPUT);
@@ -148,7 +162,10 @@ void Solenoid_OFF(){
 
 // 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 void PageMotorMove(int cnt){
-  
+
+  // 패이지 모터 활성화
+  digitalWrite(PageMotorEN,LOW);
+
   // 시계방향 회전
   digitalWrite(PageMotorDIR,HIGH); 
 
@@ -160,6 +177,9 @@ void PageMotorMove(int cnt){
   }
 
   digitalWrite(PageMotorDIR,LOW); 
+
+    // 페이지 모터 비활성화
+  digitalWrite(PageMotorEN,HIGH);
 
 }
 
@@ -173,6 +193,9 @@ void TestZeroPoint(int p){
   InitMainMotor();
   delay(500);
 
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
+
   // 시계방향 회전
   digitalWrite(MainMotorDIR,HIGH); 
   for(int i = 0; i < toZeroPorint; i++){
@@ -182,6 +205,9 @@ void TestZeroPoint(int p){
     delayMicroseconds(PageMotorSpeed);
   }
   digitalWrite(MainMotorDIR,LOW);
+
+  // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
 
   delay(500);
   Solenoid_ON();
@@ -202,6 +228,9 @@ void GoToZeroPoint(){
   InitMainMotor();
   delay(500);
 
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
+
   // 시계방향 회전
   digitalWrite(MainMotorDIR,HIGH); 
   for(int i = 0; i < toZeroPorint; i++){
@@ -212,12 +241,18 @@ void GoToZeroPoint(){
   }
   digitalWrite(MainMotorDIR,LOW);
 
+    // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
+
 }
 
 // 솔레노이드 초기화 함수(스위치 닿는 위치로)
 void InitMainMotor(){
 
   Serial.println("Init Main Motor");
+
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
 
   if( 0 == getSwitch() ){
       // 시계방향 회전
@@ -246,6 +281,9 @@ void InitMainMotor(){
       delayMicroseconds(PageMotorSpeed);
     }
   }
+
+  // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
   
 }
 
@@ -253,6 +291,9 @@ void InitMainMotor(){
 void MainMotorMoveFromZeroPoint(int p){
 
   int move = current_point - p;
+
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
 
   if(move < 0){ // 시계방향 회전 ( 왼 -> 오 )
     digitalWrite(MainMotorDIR,HIGH);
@@ -274,6 +315,8 @@ void MainMotorMoveFromZeroPoint(int p){
     }
     
   }
+    // 메인 모터 비활성화
+  digitalWrite(MainMotorEN,HIGH);
   
   current_point = p;
 }
