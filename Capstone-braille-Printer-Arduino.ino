@@ -149,6 +149,10 @@ void loop()
         delay(50);
       }
     }
+    else{
+      Serial.println("Page Motor Move :" + String(msg.toInt()));
+      PageMotorMove(msg.toInt());
+    }
     // blueSerial.write();  //시리얼 모니터 내용을 블루투스 측에 WRITE
   }
 }
