@@ -21,6 +21,8 @@ int dot_point[] = {
   0, 53, 110, 158, 215, 263, 330, 378, 435, 488, 545, 598, 655, 703, 765, 813, 870, 923, 980, 1033, 1095, 1148, 1205, 1258, 1315, 1368, 1425, 1478, 1535, 1583, 1645, 1690, 1747, 1800, 1857, 1908, 1965, 2018, 2075, 2128, 2185, 2238, 2295, 2348, 2405, 2458, 2515, 2568, 2628, 2678, 2735, 2788, 2845, 2898, 2955, 3008, 3065, 3118, 3175, 3228, 3285, 3333, 3390, 3443
   };
 
+
+
 // 초기화 위치에서 첫번째 위치까지 모터 이동 상수
 int toZeroPorint = 235;
 
@@ -38,6 +40,7 @@ int MainMotorSpeed = 800;  //메인 모터 속도값
 int PageMotorSpeed = 1600;  //페이지 모터 속도값
  
 void setup() 
+
 {
   Serial.begin(9600);   //시리얼모니터
   blueSerial.begin(9600); //블루투스 시리얼
@@ -71,10 +74,8 @@ void setup()
   pinMode(MS2_PIN,OUTPUT);
   digitalWrite(MS2_PIN,HIGH);
 
-
   // 엔드스탑 스위치 설정
   pinMode(INIT_SWITCH, INPUT);
-
 
 }
 
@@ -136,6 +137,16 @@ void loop()
       Serial.println("Test Zero Point :" + String(p));
       TestZeroPoint(p);
     }
+    else if(msg == "test"){
+      for(int i = 0; i < 64 ; i++){
+        MainMotorMoveFromZeroPoint(dot_point[i]);
+        delay(300);
+        digitalWrite(SOLENOID, HIGH);
+        delay(50);
+        digitalWrite(SOLENOID, LOW);
+        delay(50);
+      }
+    }
     else if(msg == "Z"){
       ZeroNotify();
     }
@@ -176,7 +187,6 @@ void Solenoid_OFF(){
 
 // 페이지 모터제어 (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
 void PageMotorMove(int cnt){
-
   // 패이지 모터 활성화
   digitalWrite(PageMotorEN,LOW);
 
@@ -191,6 +201,9 @@ void PageMotorMove(int cnt){
   }
 
   digitalWrite(PageMotorDIR,LOW); 
+  
+  // 페이지 모터 비활성화
+  digitalWrite(PageMotorEN,HIGH);
 
     // 페이지 모터 비활성화
   digitalWrite(PageMotorEN,HIGH);
@@ -198,7 +211,7 @@ void PageMotorMove(int cnt){
 }
 
 void TestZeroPoint(int p){
-
+  
   // 입력받은 값으로 toZeroPoint 값 변경
   toZeroPorint = p;
 
@@ -225,7 +238,7 @@ void TestZeroPoint(int p){
 
   delay(500);
   Solenoid_ON();
-  delay(2000);
+  delay(1000);
   Solenoid_OFF();
   delay(500);
 
@@ -287,7 +300,6 @@ void InitMainMotor(){
     }
   }
   else{
-    digitalWrite(MainMotorDIR,LOW);
     while( 1 == getSwitch() ){
       digitalWrite(MainMotorSTEP,HIGH);
       delayMicroseconds(MainMotorSpeed);
@@ -305,6 +317,9 @@ void InitMainMotor(){
 void MainMotorMoveFromZeroPoint(int p){
 
   int move = current_point - p;
+
+  // 메인 모터 활성화
+  digitalWrite(MainMotorEN,LOW);
 
   // 메인 모터 활성화
   digitalWrite(MainMotorEN,LOW);
