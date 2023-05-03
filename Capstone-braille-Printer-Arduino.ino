@@ -31,7 +31,7 @@ int PRINT_START = 80;  // 시작 시 > 인쇄용지 끼워져 있는 상태에�
 int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
 int PRINT_END_VALUE = 10; // 남은 줄 * value를 통해 용지가 빠질 때까지
 int PRINT_LINE = 5;  // 줄 간격
-int PRINT_BLOCK = 10; // 칸 간격
+int PRINT_BLOCK = 12; // 칸 간격
 
 // 위치 값
 int current_point = 0;
@@ -40,7 +40,7 @@ int MainMotorSpeed = 4500;  //메인 모터 속도값
 int MainMotorAcceleration = 30000;  //메인 모터 가속도값
 int PageMotorSpeed = 1600;  //페이지 모터 속도값
  
-// 메인모터 객체 생성 !! 추가
+// 메인모터 객체 생성
 AccelStepper stepper(AccelStepper::DRIVER, MainMotorSTEP, MainMotorDIR);
 
 void setup() 
@@ -375,19 +375,39 @@ void PrintStart(String receivedData){
       Serial.println("printing...");
       Serial.println("dataArray : ");
       for (int i = 0; i < lines; i++) {
-        for (int j = 0; j < 64; j++) {
-          Serial.print(dataArray[i][j]);
-          Serial.print(" ");
-          if(dataArray[i][j] == 1){ // 찍어야 하는 위치면
-            // 인덱스 위치로 이동
-            MainMotorMoveFromZeroPoint(dot_point[j]);
-            delay(300);
-            Solenoid_ON();
-            delay(50);
-            Solenoid_OFF();
-            delay(50);
+        if(total_lines % 2 == 0){
+          for (int j = 0; j < 64; j++) {
+            Serial.print(dataArray[i][j]);
+            Serial.print(" ");
+            if(dataArray[i][j] == 1){ // 찍어야 하는 위치면
+              // 인덱스 위치로 이동
+              MainMotorMoveFromZeroPoint(dot_point[j]);
+              delay(300);
+              Solenoid_ON();
+              delay(50);
+              Solenoid_OFF();
+              delay(50);
+            }
           }
         }
+        else{
+          // 반대로 인쇄
+          Serial.print("반대 탐색");
+          for (int j = 63; j >= 0; j--) {
+            Serial.print(dataArray[i][j]);
+            Serial.print(" ");
+            if(dataArray[i][j] == 1){ // 찍어야 하는 위치면
+              // 인덱스 위치로 이동
+              MainMotorMoveFromZeroPoint(dot_point[j]);
+              delay(300);
+              Solenoid_ON();
+              delay(50);
+              Solenoid_OFF();
+              delay(50);
+            }
+          }
+        }
+
         Serial.println();
         // 인쇄 정보 notify 송신
         total_lines++;
