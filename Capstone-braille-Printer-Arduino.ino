@@ -22,12 +22,11 @@ int dot_point[] = {
   0, 188, 437, 625, 874, 1062, 1311, 1499, 1748, 1936, 2185, 2373, 2622, 2810, 3059, 3247, 3496, 3684, 3933, 4121, 4370, 4558, 4807, 4995, 5244, 5432, 5681, 5869, 6118, 6306, 6555, 6743, 6992, 7180, 7429, 7617, 7866, 8054, 8303, 8491, 8740, 8928, 9177, 9365, 9614, 9802, 10051, 10239, 10488, 10676, 10925, 11113, 11362, 11550, 11799, 11987, 12236, 12424, 12673, 12861, 13110, 13298, 13547, 13735
   };
 
-
 // 초기화 위치에서 첫번째 위치까지 모터 이동 상수
 int toZeroPorint = 960;
 
 // (인쇄 시작시, 줄간격, 칸간격, 인쇄 종료시)
-int PRINT_START = 80;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
+int PRINT_START = 90;  // 시작 시 > 인쇄용지 끼워져 있는 상태에서 첫번쨰 라인 위치까지
 int PRINT_END = 150;    // 마지막 줄 인쇄 후 용지가 빠질 때까지
 int PRINT_END_VALUE = 10; // 남은 줄 * value를 통해 용지가 빠질 때까지
 int PRINT_LINE = 5;  // 줄 간격
@@ -124,13 +123,13 @@ void loop()
   if (Serial.available()) {     
     String msg = Serial.readString();    
 
-    if(msg == "son"){
+    if(msg == "s"){
       Serial.println("SOLENOID ON");
-      Solenoid_ON();
-    }
-    else if(msg == "soff"){
-      Serial.println("SOLENOID OFF");
-      Solenoid_OFF();
+      delay(5);
+      digitalWrite(SOLENOID, HIGH);
+      delay(30);
+      digitalWrite(SOLENOID, LOW);
+      delay(5);
     }
     else if(msg == "switch"){
       Serial.println(getSwitch());
@@ -149,28 +148,42 @@ void loop()
       TestZeroPoint(p);
     }
     else if(msg == "test"){
-      current_point = 0;  // 현재 위치를 0으로 함
+      stepper.setCurrentPosition(0);  // 현재 위치를 0으로 함
       for(int i = 0; i < 64 ; i++){
         MainMotorMoveFromZeroPoint(dot_point[i]);
-        delay(300);
+        delay(10);
         digitalWrite(SOLENOID, HIGH);
-        delay(50);
+        delay(30);
         digitalWrite(SOLENOID, LOW);
-        delay(50);
+        delay(5);
+      }
+    }
+    else if(msg[0] == 'm'){
+      int p = msg.substring(1).toInt();
+      MainMotorMoveFromZeroPoint(dot_point[p]);
+    }
+    else if(msg == "testv"){
+      stepper.setCurrentPosition(0);  // 현재 위치를 0으로 함
+      for(int i = 0; i < 78 ; i++){
+        if( i % 3 == 0 ){
+          PageMotorMove(PRINT_BLOCK);
+        }
+        else{
+          PageMotorMove(PRINT_LINE);
+        }
+        delay(300);
+
+        delay(5);
+        digitalWrite(SOLENOID, HIGH);
+        delay(30);
+        digitalWrite(SOLENOID, LOW);
+        delay(5);
+
+        delay(300);
       }
     }
     else if(msg == "Z"){
       ZeroNotify();
-    }
-    else if(msg == "test"){
-      for(int i = 0; i < 64; i++){
-        MainMotorMoveFromZeroPoint(dot_point[i]);
-        delay(300);
-        digitalWrite(SOLENOID, HIGH);
-        delay(50);
-        digitalWrite(SOLENOID, LOW);
-        delay(50);
-      }
     }
     else{
       Serial.println("Page Motor Move :" + String(msg.toInt()));
@@ -272,7 +285,7 @@ void InitMainMotor(){
 
   if( 0 == getSwitch() ){
     stepper.setCurrentPosition(0);
-    stepper.moveTo(80);
+    stepper.moveTo(200);
     stepper.runToPosition();
     delay(500);
     while( 1 == getSwitch() ){
@@ -376,34 +389,36 @@ void PrintStart(String receivedData){
       Serial.println("dataArray : ");
       for (int i = 0; i < lines; i++) {
         if(total_lines % 2 == 0){
+          // 정방향 인쇄
+          Serial.print("forward >> ");
           for (int j = 0; j < 64; j++) {
             Serial.print(dataArray[i][j]);
             Serial.print(" ");
             if(dataArray[i][j] == 1){ // 찍어야 하는 위치면
               // 인덱스 위치로 이동
               MainMotorMoveFromZeroPoint(dot_point[j]);
-              delay(300);
+              delay(10);
               Solenoid_ON();
-              delay(50);
+              delay(30);
               Solenoid_OFF();
-              delay(50);
+              delay(10);
             }
           }
         }
         else{
           // 반대로 인쇄
-          Serial.print("반대 탐색");
+          Serial.print("reverse >> ");
           for (int j = 63; j >= 0; j--) {
             Serial.print(dataArray[i][j]);
             Serial.print(" ");
             if(dataArray[i][j] == 1){ // 찍어야 하는 위치면
               // 인덱스 위치로 이동
               MainMotorMoveFromZeroPoint(dot_point[j]);
-              delay(300);
+              delay(10);
               Solenoid_ON();
-              delay(50);
+              delay(30);
               Solenoid_OFF();
-              delay(50);
+              delay(10);
             }
           }
         }
@@ -444,7 +459,7 @@ void PrintStart(String receivedData){
   }
   
   Serial.println("Complete Print");
-  CompleteNotify();
+  CompleteNotify(print_id);
   // 0으로 이동
   MainMotorMoveFromZeroPoint(0);
   delay(300);
@@ -472,8 +487,8 @@ void DataNotify(){
   noti.toCharArray(notiArray, sizeof(notiArray));
   blueSerial.write(notiArray);
 }
-void CompleteNotify(){
-  String noti = "Complete_Print";
+void CompleteNotify(int print_id){
+  String noti = "Complete_Print|" + String(print_id) ;
   char notiArray[noti.length() + 1];
   noti.toCharArray(notiArray, sizeof(notiArray));
   blueSerial.write(notiArray);
